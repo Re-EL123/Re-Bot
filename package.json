@@ -1,20 +1,12 @@
 {
   "name": "re-bot",
   "version": "1.0.0",
-  "description": "Re-Bot – AI Assistant for Business Tasks using Open Assistant via Hugging Face API",
+  "description": "Re-Bot – AI Assistant for Business Tasks",
+  "type": "module",
   "main": "server.js",
   "scripts": {
     "start": "node server.js"
   },
-  "keywords": [
-    "AI",
-    "assistant",
-    "business",
-    "huggingface",
-    "express"
-  ],
-  "author": "Akani Shibiri (Re-EL)",
-  "license": "MIT",
   "dependencies": {
     "dotenv": "^16.0.3",
     "express": "^4.18.2",
