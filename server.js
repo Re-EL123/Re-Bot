@@ -1,4 +1,4 @@
-// server.js
+// server.js (ES Module syntax)
 import express from 'express';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -14,6 +14,7 @@ const __dirname = path.dirname(__filename);
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+// Middleware
 app.use(bodyParser.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
@@ -22,7 +23,7 @@ app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
-// Generate endpoint
+// AI generate endpoint
 app.post('/generate', async (req, res) => {
   const { prompt } = req.body;
   if (!prompt) return res.status(400).json({ error: 'No prompt provided.' });
@@ -47,14 +48,16 @@ app.post('/generate', async (req, res) => {
 
     const data = await hfRes.json();
     const text = Array.isArray(data) ? data[0]?.generated_text : data.generated_text;
-    return res.json({ text: text || 'No output.' });
+    res.json({ text: text || 'No output.' });
   } catch (err) {
     console.error('❌ Generation error:', err);
-    return res.status(500).json({ error: 'Internal server error.' });
+    res.status(500).json({ error: 'Internal server error.' });
   }
 });
 
+// Start server
 app.listen(PORT, () => {
   console.log(`🚀 Re-Bot listening on http://localhost:${PORT}`);
 });
+
 
