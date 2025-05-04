@@ -3,12 +3,25 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Re-V AI Business Assistant</title>
+  <title>Re-Bot - Re-V AI Business Assistant</title>
   <style>
+    :root {
+      --bg: #f0f8ff;
+      --text: #333;
+      --accent: #007acc;
+      --card-bg: white;
+    }
+    [data-theme="dark"] {
+      --bg: #1e1e2f;
+      --text: #eee;
+      --accent: #0099ff;
+      --card-bg: #2b2b3d;
+    }
+
     body {
       font-family: 'Segoe UI', sans-serif;
-      background: linear-gradient(to right, #f0f8ff, #e6f7ff);
-      color: #333;
+      background: var(--bg);
+      color: var(--text);
       margin: 0;
       padding: 2rem;
       animation: fadeIn 1.5s ease-in-out;
@@ -16,22 +29,23 @@
 
     h1 {
       text-align: center;
-      color: #005f99;
+      color: var(--accent);
       font-size: 2rem;
       margin-bottom: 1rem;
     }
 
-    textarea, button {
+    textarea, button, select {
       width: 100%;
       margin-top: 1rem;
       padding: 1rem;
       font-size: 1rem;
       border-radius: 10px;
       border: 1px solid #ccc;
+      box-sizing: border-box;
     }
 
     button {
-      background-color: #007acc;
+      background-color: var(--accent);
       color: white;
       font-weight: bold;
       cursor: pointer;
@@ -44,7 +58,7 @@
 
     #response {
       margin-top: 2rem;
-      background: white;
+      background: var(--card-bg);
       padding: 2rem;
       border-radius: 15px;
       box-shadow: 0 2px 10px rgba(0,0,0,0.1);
@@ -62,65 +76,107 @@
       display: flex;
       gap: 1rem;
       margin-top: 1rem;
+      flex-wrap: wrap;
+    }
+
+    .options {
+      display: flex;
+      gap: 1rem;
+      flex-wrap: wrap;
+      margin-top: 1rem;
+    }
+
+    .options > * {
+      flex: 1;
+      min-width: 150px;
     }
   </style>
 </head>
-<body>
-  <h1>📄 Re-V AI Business Assistant</h1>
-  <textarea id="prompt" rows="6" placeholder="Describe what you want: e.g. 'Write a business proposal for a bakery startup.'"></textarea>
+<body data-theme="light">
+  <h1>🤖 Re-Bot: AI Business Assistant</h1>
+
+  <div class="options">
+    <select id="docType">
+      <option value="">Select Document Type</option>
+      <option value="Proposal">Business Proposal</option>
+      <option value="Invoice">Invoice</option>
+      <option value="Quotation">Quotation</option>
+      <option value="Email">Email</option>
+      <option value="Letter">Letter</option>
+    </select>
+
+    <select id="themeToggle" onchange="toggleTheme(this.value)">
+      <option value="light">🌞 Light Mode</option>
+      <option value="dark">🌙 Dark Mode</option>
+    </select>
+  </div>
+
+  <textarea id="prompt" rows="6" placeholder="Type your prompt, or let us format your document based on the type above..."></textarea>
   <button onclick="generate()">✨ Generate</button>
 
   <div id="response"></div>
 
   <div class="download-buttons">
-    <button onclick="downloadAs('pdf')">⬇️ Download as PDF</button>
-    <button onclick="downloadAs('png')">⬇️ Download as PNG</button>
+    <button onclick="downloadAs('pdf')">⬇️ Download PDF</button>
+    <button onclick="downloadAs('png')">⬇️ Download PNG</button>
   </div>
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <script>
-    async function generate() {
-      const prompt = document.getElementById("prompt").value.trim();
-      if (!prompt) {
-        alert("Please enter a prompt.");
-        return;
+    function toggleTheme(value) {
+      document.body.setAttribute('data-theme', value);
+    }
+
+    function getPrompt() {
+      const type = document.getElementById("docType").value;
+      const input = document.getElementById("prompt").value.trim();
+
+      if (!type && !input) return "";
+
+      if (type && !input) {
+        switch(type) {
+          case "Proposal": return "Write a professional business proposal for a digital marketing agency.";
+          case "Invoice": return "Generate a company invoice with sections: Company Info, Client Info, Invoice Number, Itemized Charges, Total, and Notes.";
+          case "Quotation": return "Generate a business quotation with service details, pricing, and expiry date.";
+          case "Email": return "Write a formal business email to follow up on a client meeting.";
+          case "Letter": return "Draft a formal letter of recommendation for an employee.";
+        }
       }
+
+      return input;
+    }
+
+    async function generate() {
+      const prompt = getPrompt();
+      if (!prompt) return alert("Please select a document type or enter a prompt.");
 
       document.getElementById("response").innerHTML = "⏳ Generating...";
 
-      try {
-        const res = await fetch("/generate", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ prompt })
-        });
+      const res = await fetch("/generate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ prompt })
+      });
 
-        const data = await res.json();
-        document.getElementById("response").innerText = data?.[0]?.generated_text || "No response.";
-      } catch (error) {
-        document.getElementById("response").innerText = "❌ Error generating content.";
-      }
+      const data = await res.json();
+      document.getElementById("response").innerText = data?.[0]?.generated_text || "No response.";
     }
 
     async function downloadAs(type) {
       const element = document.getElementById("response");
-
-      if (!element.innerText.trim()) {
-        alert("Nothing to download yet.");
-        return;
-      }
+      if (!element.innerText.trim()) return alert("Nothing to download yet.");
 
       if (type === 'pdf') {
         const { jsPDF } = window.jspdf;
         const doc = new jsPDF();
         const lines = doc.splitTextToSize(element.innerText, 180);
         doc.text(lines, 10, 10);
-        doc.save("Re-V-Generated.pdf");
+        doc.save("Re-V-Document.pdf");
       } else {
         html2canvas(element).then(canvas => {
           const link = document.createElement('a');
-          link.download = 'Re-V-Generated.png';
+          link.download = 'Re-V-Document.png';
           link.href = canvas.toDataURL();
           link.click();
         });
@@ -129,3 +185,4 @@
   </script>
 </body>
 </html>
+
