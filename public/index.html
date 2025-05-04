@@ -17,6 +17,8 @@
     h1 {
       text-align: center;
       color: #005f99;
+      font-size: 2rem;
+      margin-bottom: 1rem;
     }
 
     textarea, button {
@@ -28,6 +30,18 @@
       border: 1px solid #ccc;
     }
 
+    button {
+      background-color: #007acc;
+      color: white;
+      font-weight: bold;
+      cursor: pointer;
+      transition: background-color 0.3s ease;
+    }
+
+    button:hover {
+      background-color: #005f99;
+    }
+
     #response {
       margin-top: 2rem;
       background: white;
@@ -35,11 +49,19 @@
       border-radius: 15px;
       box-shadow: 0 2px 10px rgba(0,0,0,0.1);
       white-space: pre-wrap;
+      min-height: 150px;
+      font-size: 1.1rem;
     }
 
     @keyframes fadeIn {
       from { opacity: 0; transform: translateY(20px); }
       to   { opacity: 1; transform: translateY(0); }
+    }
+
+    .download-buttons {
+      display: flex;
+      gap: 1rem;
+      margin-top: 1rem;
     }
   </style>
 </head>
@@ -47,34 +69,53 @@
   <h1>📄 Re-V AI Business Assistant</h1>
   <textarea id="prompt" rows="6" placeholder="Describe what you want: e.g. 'Write a business proposal for a bakery startup.'"></textarea>
   <button onclick="generate()">✨ Generate</button>
+
   <div id="response"></div>
-  <button onclick="downloadAs('pdf')">⬇️ Download as PDF</button>
-  <button onclick="downloadAs('png')">⬇️ Download as PNG</button>
+
+  <div class="download-buttons">
+    <button onclick="downloadAs('pdf')">⬇️ Download as PDF</button>
+    <button onclick="downloadAs('png')">⬇️ Download as PNG</button>
+  </div>
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <script>
     async function generate() {
-      const prompt = document.getElementById("prompt").value;
+      const prompt = document.getElementById("prompt").value.trim();
+      if (!prompt) {
+        alert("Please enter a prompt.");
+        return;
+      }
+
       document.getElementById("response").innerHTML = "⏳ Generating...";
 
-      const res = await fetch("/generate", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ prompt })
-      });
+      try {
+        const res = await fetch("/generate", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ prompt })
+        });
 
-      const data = await res.json();
-      document.getElementById("response").innerText = data?.[0]?.generated_text || "No response.";
+        const data = await res.json();
+        document.getElementById("response").innerText = data?.[0]?.generated_text || "No response.";
+      } catch (error) {
+        document.getElementById("response").innerText = "❌ Error generating content.";
+      }
     }
 
     async function downloadAs(type) {
       const element = document.getElementById("response");
 
+      if (!element.innerText.trim()) {
+        alert("Nothing to download yet.");
+        return;
+      }
+
       if (type === 'pdf') {
         const { jsPDF } = window.jspdf;
         const doc = new jsPDF();
-        doc.text(element.innerText, 10, 10);
+        const lines = doc.splitTextToSize(element.innerText, 180);
+        doc.text(lines, 10, 10);
         doc.save("Re-V-Generated.pdf");
       } else {
         html2canvas(element).then(canvas => {
