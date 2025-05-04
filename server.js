@@ -1,57 +1,50 @@
-import express from 'express';
-import path from 'path';
-import { fileURLToPath } from 'url';
-import fetch from 'node-fetch';
-import dotenv from 'dotenv';
-
-dotenv.config();
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-
+// server.js
+const express = require("express");
+const bodyParser = require("body-parser");
+const fetch = require("node-fetch");
 const app = express();
-app.use(express.json());
-app.use(express.static(path.join(__dirname, 'public')));
+const port = 3000;
 
-// Serve homepage
-app.get('/', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'index.html'));
-});
+app.use(bodyParser.json());
+app.use(express.static("public"));
 
-// Handle generation
-app.post('/generate', async (req, res) => {
-  const { prompt } = req.body;
-  const formattedPrompt = `Generate: ${prompt}`;
+const API_URL = "https://api-inference.huggingface.co/models/bigscience/bloom";
+const HF_API_KEY = process.env.HUGGINGFACE_API_KEY;
+
+app.post("/generate", async (req, res) => {
+  const prompt = req.body.prompt;
 
   try {
-    const hfRes = await fetch(
-      'https://api-inference.huggingface.co/models/google/flan-t5-base',
-      {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${process.env.HUGGINGFACE_API_KEY}`,
-          'Content-Type': 'application/json'
+    const response = await fetch(API_URL, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${HF_API_KEY}`,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        inputs: prompt,
+        parameters: {
+          max_new_tokens: 50,
+          temperature: 0.7,
         },
-        body: JSON.stringify({ inputs: formattedPrompt })
-      }
-    );
+      }),
+    });
 
-    const result = await hfRes.json();
-    console.log('🔍 Hugging Face API result:', result);
-
-    if (Array.isArray(result) && result[0]?.generated_text) {
-      res.json({ text: result[0].generated_text });
-    } else {
-      res.status(500).json({ error: 'No generated text returned.' });
+    if (!response.ok) {
+      const errorDetails = await response.text();
+      return res.status(response.status).send({ error: errorDetails });
     }
-  } catch (err) {
-    console.error('❌ Generation error:', err);
-    res.status(500).json({ error: 'Failed to generate content.' });
+
+    const data = await response.json();
+    const generated = data[0]?.generated_text || "No response.";
+    res.send({ result: generated });
+  } catch (error) {
+    console.error("Error generating text:", error);
+    res.status(500).send({ error: "Error generating text." });
   }
 });
 
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () =>
-  console.log(`🚀 Re-Bot listening on http://localhost:${PORT}`)
-);
+app.listen(port, () => {
+  console.log(`Server running on http://localhost:${port}`);
+});
 
